@@ -117,7 +117,8 @@ def tool_calls_to_openai(
             "index": 0,
             "message": {
                 "role": "assistant",
-                "content": tool_calls[0].reasoning or None,
+                "content": None,
+                **({"reasoning_content": tool_calls[0].reasoning} if tool_calls[0].reasoning else {}),
                 "tool_calls": tc_list,
             },
             "finish_reason": "tool_calls",
@@ -139,18 +140,22 @@ def text_response_to_openai(
     text: str,
     model: str = "forge",
     usage: Any | None = None,
+    reasoning: str | None = None,
 ) -> dict[str, Any]:
     """Convert a text response to an OpenAI chat completions response object."""
+    message: dict[str, Any] = {
+        "role": "assistant",
+        "content": text,
+    }
+    if reasoning:
+        message["reasoning_content"] = reasoning
     response = {
         "id": f"chatcmpl-{uuid.uuid4().hex[:12]}",
         "object": "chat.completion",
         "model": model,
         "choices": [{
             "index": 0,
-            "message": {
-                "role": "assistant",
-                "content": text,
-            },
+            "message": message,
             "finish_reason": "stop",
         }],
         "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
@@ -181,7 +186,7 @@ def tool_calls_to_sse_events(
     cmpl_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
     events: list[dict[str, Any]] = []
 
-    # If there's reasoning, send it as a content delta first
+    # If there's reasoning, send it as a reasoning_content delta first
     if tool_calls[0].reasoning:
         events.append({
             "id": cmpl_id,
@@ -189,7 +194,7 @@ def tool_calls_to_sse_events(
             "model": model,
             "choices": [{
                 "index": 0,
-                "delta": {"role": "assistant", "content": tool_calls[0].reasoning},
+                "delta": {"role": "assistant", "reasoning_content": tool_calls[0].reasoning},
                 "finish_reason": None,
             }],
         })
@@ -247,6 +252,7 @@ def text_to_sse_events(
     model: str = "forge",
     chunk_size: int = 0,
     usage: Any | None = None,
+    reasoning: str | None = None,
 ) -> list[dict[str, Any]]:
     """Convert a text response to SSE chunk objects.
 
@@ -255,6 +261,19 @@ def text_to_sse_events(
     """
     cmpl_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
     events: list[dict[str, Any]] = []
+
+    # Emit reasoning_content delta before text content
+    if reasoning:
+        events.append({
+            "id": cmpl_id,
+            "object": "chat.completion.chunk",
+            "model": model,
+            "choices": [{
+                "index": 0,
+                "delta": {"role": "assistant", "reasoning_content": reasoning},
+                "finish_reason": None,
+            }],
+        })
 
     if chunk_size > 0 and len(text) > chunk_size:
         chunks = [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]

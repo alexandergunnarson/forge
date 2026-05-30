@@ -153,7 +153,8 @@ class TestToolCallsToOpenai:
         result = tool_calls_to_openai([
             ToolCall(tool="search", args={}, reasoning="Let me think..."),
         ])
-        assert result["choices"][0]["message"]["content"] == "Let me think..."
+        assert result["choices"][0]["message"]["content"] is None
+        assert result["choices"][0]["message"]["reasoning_content"] == "Let me think..."
 
     def test_no_reasoning_content_is_none(self):
         result = tool_calls_to_openai([ToolCall(tool="search", args={})])
@@ -206,7 +207,7 @@ class TestToolCallsToSseEvents:
         ])
         # reasoning delta + tool call delta + final
         assert len(events) == 3
-        assert events[0]["choices"][0]["delta"]["content"] == "Thinking..."
+        assert events[0]["choices"][0]["delta"]["reasoning_content"] == "Thinking..."
 
     def test_multiple_tool_calls(self):
         events = tool_calls_to_sse_events([

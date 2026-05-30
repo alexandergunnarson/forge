@@ -220,8 +220,9 @@ async def handle_chat_completions(
     if respond_calls and not other_calls:
         # Pure respond — convert to text
         text = respond_calls[0].args.get("message", "")
+        reasoning = respond_calls[0].reasoning
         logger.info("Stripping respond() call, returning as text")
-        return _emit_text(text, model_name, protocol, is_stream, usage=usage)
+        return _emit_text(text, model_name, protocol, is_stream, usage=usage, reasoning=reasoning)
 
     if other_calls:
         # Real tool calls (possibly mixed with respond) — return the
@@ -238,6 +239,7 @@ def _emit_text(
     protocol: str,
     is_stream: bool,
     usage: Any | None = None,
+    reasoning: str | None = None,
 ) -> dict[str, Any] | list[dict[str, Any]]:
     """Protocol-aware text response emitter."""
     if protocol == "anthropic":
@@ -245,8 +247,8 @@ def _emit_text(
             return text_to_anthropic_sse(text, model=model, usage=usage)
         return text_response_to_anthropic(text, model=model, usage=usage)
     if is_stream:
-        return text_to_sse_events(text, model=model, usage=usage)
-    return text_response_to_openai(text, model=model, usage=usage)
+        return text_to_sse_events(text, model=model, usage=usage, reasoning=reasoning)
+    return text_response_to_openai(text, model=model, usage=usage, reasoning=reasoning)
 
 
 def _emit_tool_calls(

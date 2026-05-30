@@ -1,4 +1,17 @@
-# forge
+# forge (fork)
+
+> **This is a fork of [antoinezambelli/forge](https://github.com/antoinezambelli/forge)** with the following changes:
+>
+> ### Changes vs. upstream
+>
+> 1. **fix: exclude `stream_options` from proxy passthrough** ([PR #94](https://github.com/antoinezambelli/forge/pull/94))
+>    — Forge's proxy leaked `stream_options` from the inbound request into non-streaming backend calls. Strict OpenAI-compatible backends like vLLM reject `stream_options` when `stream` is not `True`, causing 500 errors on every request from clients like Zed editor. Fixed by adding `stream_options` to the `_FORGE_OWNED` set.
+>
+> 2. **fix: emit reasoning via `reasoning_content` field**
+>    — Forge's proxy convert layer put model reasoning into the `content` field of the assistant message. Clients like Zed that look for `reasoning_content` (the OpenAI-compatible field used by vLLM, llama.cpp, and others for thinking/reasoning display) never saw thinking output. Fixed across all four outbound paths: `tool_calls_to_openai`, `text_response_to_openai`, `tool_calls_to_sse_events`, and `text_to_sse_events`. Also preserves reasoning through the `respond` tool stripping path.
+
+---
+
 
 [![PyPI](https://img.shields.io/pypi/v/forge-guardrails.svg)](https://pypi.org/project/forge-guardrails/)
 [![Tests](https://github.com/antoinezambelli/forge/actions/workflows/tests.yml/badge.svg)](https://github.com/antoinezambelli/forge/actions/workflows/tests.yml)
